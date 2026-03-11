@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, ActivityIndicator, View } from 'react-native';
+import { Platform, ActivityIndicator, View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 import { getSession } from './src/services/session';
 
@@ -18,39 +19,105 @@ import TaskScreen from './src/screens/TaskScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function MainTabs({ route }) {
-    const { user } = route.params || {};
+function GradientTabBar({ state, descriptors, navigation }) {
     const insets = useSafeAreaInsets();
     const bottomPadding = Math.max(insets.bottom, 10);
 
+    const iconMap = {
+        Home: 'home',
+        Logs: 'list',
+        Task: 'check-square',
+        Profile: 'user',
+    };
+
+    return (
+        <LinearGradient
+            colors={['#FF8C00', '#FF007F']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[tabStyles.container, { paddingBottom: bottomPadding }]}
+        >
+            {state.routes.map((route, index) => {
+                const isFocused = state.index === index;
+                const iconName = iconMap[route.name] || 'circle';
+
+                const onPress = () => {
+                    const event = navigation.emit({
+                        type: 'tabPress',
+                        target: route.key,
+                        canPreventDefault: true,
+                    });
+                    if (!isFocused && !event.defaultPrevented) {
+                        navigation.navigate(route.name);
+                    }
+                };
+
+                return (
+                    <TouchableOpacity
+                        key={route.key}
+                        onPress={onPress}
+                        style={tabStyles.tab}
+                        activeOpacity={0.7}
+                    >
+                        <View style={[tabStyles.iconWrapper, isFocused && tabStyles.activeIconWrapper]}>
+                            <Icon
+                                name={iconName}
+                                size={20}
+                                color={isFocused ? '#FF007F' : 'rgba(255,255,255,0.6)'}
+                            />
+                        </View>
+                        <Text style={[
+                            tabStyles.label,
+                            { color: isFocused ? '#fff' : 'rgba(255,255,255,0.6)' }
+                        ]}>
+                            {route.name}
+                        </Text>
+                    </TouchableOpacity>
+                );
+            })}
+        </LinearGradient>
+    );
+}
+
+const tabStyles = StyleSheet.create({
+    container: {
+        flexDirection: 'row',
+        paddingTop: 10,
+        elevation: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+    },
+    tab: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+    },
+    iconWrapper: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    activeIconWrapper: {
+        backgroundColor: '#fff',
+    },
+    label: {
+        fontSize: 10,
+        fontWeight: '700',
+    },
+});
+
+function MainTabs({ route }) {
+    const { user } = route.params || {};
+
     return (
         <Tab.Navigator
-            screenOptions={({ route }) => ({
-                tabBarIcon: ({ color, size }) => {
-                    let iconName;
-                    if (route.name === 'Home') iconName = 'home';
-                    else if (route.name === 'Logs') iconName = 'list';
-                    else if (route.name === 'Task') iconName = 'check-square';
-                    else if (route.name === 'Profile') iconName = 'user';
-                    return <Icon name={iconName} size={size} color={color} />;
-                },
-                tabBarActiveTintColor: '#FF007F',
-                tabBarInactiveTintColor: '#94a3b8',
-                tabBarStyle: {
-                    height: 60 + bottomPadding,
-                    paddingBottom: bottomPadding,
-                    paddingTop: 10,
-                    backgroundColor: '#fff',
-                    borderTopWidth: 1,
-                    borderTopColor: '#f1f5f9',
-                    elevation: 20,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: -4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
-                },
-                headerShown: false
-            })}
+            tabBar={(props) => <GradientTabBar {...props} />}
+            screenOptions={{ headerShown: false }}
         >
             <Tab.Screen name="Home" component={HomeScreen} initialParams={{ user }} />
             <Tab.Screen name="Logs" component={AttendanceLogsScreen} initialParams={{ user }} />
