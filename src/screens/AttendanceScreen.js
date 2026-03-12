@@ -70,12 +70,24 @@ const AttendanceScreen = ({ navigation, route }) => {
                 imageBase64: mockImageBase64,
                 location: location,
                 status: "On-Time",
-                isRegistration: action === 'register'
+                isRegistration: action === 'register',
+                type: action === 'checkout' ? 'check-out' : 'check-in'
             });
 
             setIsVerifying(false);
 
-            // If this was a registration, update session to reflect face is now registered
+            // Handle successful checkout
+            if (action === 'checkout') {
+                await clearShiftState();
+                Alert.alert('Success', 'Check-out successful! Your shift has ended.');
+                navigation.navigate('MainTabs', { 
+                    screen: 'Home', 
+                    params: { shiftEnded: true, user: { ...user } } 
+                });
+                return;
+            }
+
+            // If this was a registration, update session
             if (action === 'register') {
                 const currentSession = await getSession();
                 if (currentSession) {
@@ -85,7 +97,7 @@ const AttendanceScreen = ({ navigation, route }) => {
             }
 
             Alert.alert('Success',
-                action === 'register' ? 'Face registered successfully!' : 'Identity verified & attendance marked!'
+                action === 'register' ? 'Face registered successfully!' : 'Identity verified & check-in successful!'
             );
             navigation.navigate('MainTabs', { 
                 screen: 'Home', 

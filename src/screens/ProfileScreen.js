@@ -40,18 +40,12 @@ const ProfileScreen = ({ route, navigation }) => {
     const handleEndShift = async () => {
         Alert.alert(
             'End Shift',
-            'Are you sure you want to end your current shift?',
+            'Confirm your checkout to end today\'s shift?',
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                    text: 'End Shift',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await clearShiftState();
-                        Alert.alert('Shift Ended', 'Your shift has been recorded. See you next time!');
-                        // Navigate to Home to reflect the change
-                        navigation.navigate('Home', { shiftEnded: true });
-                    }
+                    text: 'Checkout Now',
+                    onPress: () => navigation.navigate('Attendance', { user, action: 'checkout' })
                 }
             ]
         );
