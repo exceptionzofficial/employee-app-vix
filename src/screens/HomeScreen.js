@@ -31,7 +31,8 @@ const HomeScreen = ({ navigation, route }) => {
     const initialAction = route.params?.initialAction || (user.isFaceRegistered ? 'signin' : 'register');
 
     const [currentLocation, setCurrentLocation] = useState(null);
-    const [targetRule, setTargetRule] = useState(null);
+    const [rules, setRules] = useState([]);
+    const [nearestRule, setNearestRule] = useState(null);
     const [distance, setDistance] = useState(null);
     const [locationAccuracy, setLocationAccuracy] = useState(null);
     const [isWithinRadius, setIsWithinRadius] = useState(false);
@@ -43,18 +44,18 @@ const HomeScreen = ({ navigation, route }) => {
     const timerRef = useRef(null);
     const mapRef = useRef(null);
 
-    const fetchRule = async () => {
+    const fetchRules = async () => {
         try {
-            const res = await axios.get(`${API_URL}/attendance/current-rule/${user.employeeId}`);
-            if (res.data) setTargetRule(res.data);
+            const res = await axios.get(`${API_URL}/attendance/current-rules/${user.employeeId}`);
+            if (res.data) setRules(res.data);
         } catch (err) {
-            console.log('No rule found or error', err);
-            setTargetRule(null);
+            console.log('No rules found or error', err);
+            setRules([]);
         }
     };
 
     const init = async () => {
-        await fetchRule();
+        await fetchRules();
         await handlePermissions();
 
         // Restore persisted shift state
@@ -91,15 +92,15 @@ const HomeScreen = ({ navigation, route }) => {
 
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
-        await fetchRule();
+        await fetchRules();
         
         // Force an immediate location update
         Geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude, accuracy } = position.coords;
                 setCurrentLocation({ latitude, longitude });
-                if (targetRule && targetRule.location) {
-                    calculateDistance(latitude, longitude, targetRule.location.latitude, targetRule.location.longitude, accuracy);
+                if (rules.length > 0) {
+                    calculateDistance(latitude, longitude, accuracy);
                 }
                 setRefreshing(false);
             },
@@ -109,7 +110,7 @@ const HomeScreen = ({ navigation, route }) => {
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
         );
-    }, [targetRule, user.employeeId]);
+    }, [rules, user.employeeId]);
 
     const handlePermissions = async () => {
         const permission = Platform.OS === 'ios' ? PERMISSIONS.IOS.LOCATION_WHEN_IN_USE : PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION;
@@ -121,24 +122,43 @@ const HomeScreen = ({ navigation, route }) => {
         }
     };
 
-    const calculateDistance = (lat1, lon1, lat2, lon2, accuracy = 0) => {
-        if (!lat2 || !lon2) return;
+    const calculateDistance = (lat1, lon1, accuracy = 0) => {
+        if (!rules || rules.length === 0) return;
+        
         const R = 6371e3;
-        const φ1 = lat1 * Math.PI / 180;
-        const φ2 = Number(lat2) * Math.PI / 180;
-        const Δφ = (Number(lat2) - lat1) * Math.PI / 180;
-        const Δλ = (Number(lon2) - lon1) * Math.PI / 180;
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const d = R * c;
+        let minDistance = Infinity;
+        let closest = null;
+        let inAnyRange = false;
+
+        rules.forEach(rule => {
+            if (!rule.location) return;
+            const lat2 = Number(rule.location.latitude);
+            const lon2 = Number(rule.location.longitude);
+            
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const d = R * c;
+
+            if (d < minDistance) {
+                minDistance = d;
+                closest = rule;
+            }
+
+            // Check if within this specific rule's radius
+            const buffer = 50;
+            const allowedRadius = Number(rule.radius) + buffer + accuracy;
+            if (d <= allowedRadius) inAnyRange = true;
+        });
         
-        setDistance(d);
+        setDistance(minDistance);
+        setNearestRule(closest);
         setLocationAccuracy(accuracy);
-        
-        // Dynamic threshold: radius + 50m buffer + current GPS accuracy
-        const buffer = 50;
-        const allowedRadius = Number(targetRule.radius) + buffer + (accuracy || 0);
-        setIsWithinRadius(d <= allowedRadius);
+        setIsWithinRadius(inAnyRange);
     };
 
     const startLocationTracking = () => {
@@ -147,8 +167,8 @@ const HomeScreen = ({ navigation, route }) => {
                 const { latitude, longitude, accuracy } = position.coords;
                 setCurrentLocation({ latitude, longitude });
 
-                if (targetRule && targetRule.location) {
-                    calculateDistance(latitude, longitude, targetRule.location.latitude, targetRule.location.longitude, accuracy);
+                if (rules.length > 0) {
+                    calculateDistance(latitude, longitude, accuracy);
                 }
             },
             (error) => {
@@ -210,10 +230,10 @@ const HomeScreen = ({ navigation, route }) => {
                 )}
 
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Assigned Location</Text>
-                    {targetRule ? (
+                    <Text style={styles.cardTitle}>Nearest Branch / Location</Text>
+                    {nearestRule ? (
                         <>
-                            <Text style={styles.locName}>{targetRule.eventName}</Text>
+                            <Text style={styles.locName}>{nearestRule.eventName}</Text>
                             <View style={styles.distRow}>
                                 <View>
                                     <Text style={styles.distLabel}>Distance: {distance?.toFixed(0)}m</Text>
@@ -233,24 +253,35 @@ const HomeScreen = ({ navigation, route }) => {
                                     <MapView
                                         style={styles.map}
                                         initialRegion={{
-                                            latitude: targetRule.location.latitude,
-                                            longitude: targetRule.location.longitude,
-                                            latitudeDelta: 0.005,
-                                            longitudeDelta: 0.005,
+                                            latitude: nearestRule.location.latitude,
+                                            longitude: nearestRule.location.longitude,
+                                            latitudeDelta: 0.015,
+                                            longitudeDelta: 0.015,
                                         }}
                                     >
-                                        <Circle
-                                            center={{
-                                                latitude: targetRule.location.latitude,
-                                                longitude: targetRule.location.longitude
-                                            }}
-                                            radius={targetRule.radius}
-                                            fillColor="rgba(255, 0, 127, 0.2)"
-                                            strokeColor="rgba(255, 0, 127, 0.8)"
-                                            strokeWidth={2}
-                                        />
+                                        {rules.map((rule, idx) => (
+                                            <React.Fragment key={idx}>
+                                                <Circle
+                                                    center={{
+                                                        latitude: Number(rule.location.latitude),
+                                                        longitude: Number(rule.location.longitude)
+                                                    }}
+                                                    radius={Number(rule.radius)}
+                                                    fillColor={rule.ruleId === nearestRule.ruleId ? "rgba(255, 0, 127, 0.2)" : "rgba(148, 163, 184, 0.2)"}
+                                                    strokeColor={rule.ruleId === nearestRule.ruleId ? "rgba(255, 0, 127, 0.8)" : "rgba(148, 163, 184, 0.8)"}
+                                                    strokeWidth={2}
+                                                />
+                                                <Marker 
+                                                    coordinate={{
+                                                        latitude: Number(rule.location.latitude),
+                                                        longitude: Number(rule.location.longitude)
+                                                    }}
+                                                    title={rule.eventName}
+                                                />
+                                            </React.Fragment>
+                                        ))}
                                         <Marker coordinate={currentLocation} title="You">
-                                            <View style={styles.customMarker}>
+                                            <View style={styles.userMarker}>
                                                 <Icon name="user" size={14} color="#fff" />
                                             </View>
                                         </Marker>
@@ -259,15 +290,19 @@ const HomeScreen = ({ navigation, route }) => {
                             )}
                         </>
                     ) : (
-                        <Text style={[styles.locName, { color: '#ef4444' }]}>No active geofence found</Text>
+                        <Text style={[styles.locName, { color: '#ef4444' }]}>No active geofences found</Text>
                     )}
                 </View>
 
                 {!isShiftStarted ? (
                     <TouchableOpacity
                         style={styles.actionBtn}
-                        disabled={!isWithinRadius || !targetRule}
-                        onPress={() => navigation.navigate('Attendance', { user, action: initialAction })}
+                        disabled={!isWithinRadius || rules.length === 0}
+                        onPress={() => navigation.navigate('Attendance', { 
+                            user, 
+                            action: initialAction, 
+                            geofenceName: nearestRule?.eventName || 'Unknown Branch' 
+                        })}
                     >
                         <LinearGradient colors={isWithinRadius ? ['#FF8C00', '#FF007F'] : ['#e2e8f0', '#cbd5e1']} style={styles.btnGrad}>
                             <Text style={styles.btnText}>
@@ -310,7 +345,7 @@ const styles = StyleSheet.create({
     successText: { color: '#166534', fontWeight: 'bold' },
     mapContainer: { height: 200, width: '100%', borderRadius: 15, overflow: 'hidden', marginTop: 20 },
     map: { flex: 1 },
-    customMarker: { backgroundColor: '#FF8C00', padding: 6, borderRadius: 20, borderWidth: 2, borderColor: '#fff' },
+    userMarker: { backgroundColor: '#FF8C00', padding: 6, borderRadius: 20, borderWidth: 2, borderColor: '#fff' },
     accuracyText: { fontSize: 10, color: '#94a3b8', marginTop: 2 }
 });
 

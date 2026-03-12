@@ -5,7 +5,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { request, PERMISSIONS, RESULTS, check } from 'react-native-permissions';
 import axios from 'axios';
 import API_URL from '../services/api';
-import { saveSession, getSession } from '../services/session';
+import { saveSession, getSession, clearShiftState } from '../services/session';
 
 const { width, height } = Dimensions.get('window');
 const FRAME_SIZE = width * 0.75;
@@ -69,6 +69,7 @@ const AttendanceScreen = ({ navigation, route }) => {
                 employeeId: user.employeeId,
                 imageBase64: mockImageBase64,
                 location: location,
+                geofenceName: route.params?.geofenceName || 'Main Branch', // New field
                 status: "On-Time",
                 isRegistration: action === 'register',
                 type: action === 'checkout' ? 'check-out' : 'check-in'
@@ -124,34 +125,43 @@ const AttendanceScreen = ({ navigation, route }) => {
             <View style={styles.overlay}>
                 <View style={styles.header}>
                     <Text style={styles.title}>CRAYONZ SECURE</Text>
-                    <Text style={styles.subtitle}>{action === 'register' ? 'FACE REGISTRATION' : 'FACE IDENTIFICATION'}</Text>
+                    <Text style={styles.subtitle}>
+                        {action === 'register' ? 'FACE REGISTRATION' : action === 'checkout' ? 'FACE LOGOUT' : 'FACE IDENTIFICATION'}
+                    </Text>
                 </View>
 
                 <View style={styles.frameContainer}>
-                    <View style={styles.frame}>
-                        <LinearGradient colors={['#FF8C00', '#FF007F']} style={styles.frameBorder} />
-                        <View style={styles.innerFrame}>
-                            {/* Corner Markers */}
-                            <View style={[styles.corner, styles.topLeft]} />
-                            <View style={[styles.corner, styles.topRight]} />
-                            <View style={[styles.corner, styles.bottomLeft]} />
-                            <View style={[styles.corner, styles.bottomRight]} />
-                            
-                            {isVerifying && (
-                                <View style={styles.verifyingOverlay}>
-                                    <ActivityIndicator size="large" color="#fff" />
-                                    <Text style={styles.verifyingText}>{action === 'register' ? 'Registering...' : 'Verifying...'}</Text>
-                                </View>
+                    {/* Background darkening elements with hole */}
+                    <View style={styles.sideOverlay} />
+                    <View style={styles.centerContainer}>
+                        <View style={styles.topBottomOverlay} />
+                        <View style={styles.frame}>
+                            <LinearGradient colors={['#FF8C00', '#FF007F']} style={styles.frameBorder} />
+                            <View style={styles.innerFrame}>
+                                {/* Corner Markers */}
+                                <View style={[styles.corner, styles.topLeft]} />
+                                <View style={[styles.corner, styles.topRight]} />
+                                <View style={[styles.corner, styles.bottomLeft]} />
+                                <View style={[styles.corner, styles.bottomRight]} />
+                                
+                                {isVerifying && (
+                                    <View style={styles.verifyingOverlay}>
+                                        <ActivityIndicator size="large" color="#fff" />
+                                        <Text style={styles.verifyingText}>{action === 'register' ? 'Registering...' : 'Verifying...'}</Text>
+                                    </View>
+                                )}
+                            </View>
+                            {isScanning && (
+                                <Animated.View style={[styles.scanLine, {
+                                    transform: [{ translateY: scanAnim.interpolate({ inputRange: [0, 1], outputRange: [10, FRAME_SIZE - 10] }) }]
+                                }]}>
+                                    <LinearGradient colors={['transparent', '#FF007F', 'transparent']} horizontal={true} style={styles.lineGradient} />
+                                </Animated.View>
                             )}
                         </View>
-                        {isScanning && (
-                            <Animated.View style={[styles.scanLine, {
-                                transform: [{ translateY: scanAnim.interpolate({ inputRange: [0, 1], outputRange: [10, FRAME_SIZE - 10] }) }]
-                            }]}>
-                                <LinearGradient colors={['transparent', '#FF007F', 'transparent']} horizontal={true} style={styles.lineGradient} />
-                            </Animated.View>
-                        )}
+                        <View style={styles.topBottomOverlay} />
                     </View>
+                    <View style={styles.sideOverlay} />
                 </View>
 
                 <View style={styles.footer}>
@@ -161,7 +171,9 @@ const AttendanceScreen = ({ navigation, route }) => {
                     {!isVerifying && (
                         <TouchableOpacity onPress={handleVerifyOrRegister} activeOpacity={0.8}>
                             <LinearGradient colors={['#FF8C00', '#FF007F']} style={styles.captureBtn}>
-                                <Text style={styles.captureBtnText}>{action === 'register' ? 'CAPTURE & REGISTER' : 'CONFIRM FACE ID'}</Text>
+                                <Text style={styles.captureBtnText}>
+                                    {action === 'register' ? 'CAPTURE & REGISTER' : action === 'checkout' ? 'CONFIRM SIGN OUT' : 'CONFIRM FACE ID'}
+                                </Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     )}
@@ -178,7 +190,8 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
     loading: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', gap: 15 },
     text: { color: '#fff', fontSize: 16, fontWeight: '600' },
-    overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'space-between', paddingVertical: 60 },
+    overlay: { flex: 1, justifyContent: 'space-between', paddingVertical: 60 },
+    bgOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' },
     header: { alignItems: 'center' },
     title: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 3 },
     subtitle: { color: '#FF8C00', fontSize: 12, fontWeight: '700', marginTop: 4, letterSpacing: 1 },
@@ -200,7 +213,10 @@ const styles = StyleSheet.create({
     captureBtn: { paddingHorizontal: 45, paddingVertical: 18, borderRadius: 35, elevation: 8 },
     captureBtnText: { color: '#fff', fontSize: 15, fontWeight: '900', letterSpacing: 1 },
     cancelBtn: { marginTop: 25 },
-    cancelText: { color: 'rgba(255,255,255,0.5)', fontSize: 15, fontWeight: '600' }
+    cancelText: { color: 'rgba(255,255,255,0.5)', fontSize: 15, fontWeight: '600' },
+    sideOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+    topBottomOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+    centerContainer: { flex: 1 }
 });
 
 export default AttendanceScreen;

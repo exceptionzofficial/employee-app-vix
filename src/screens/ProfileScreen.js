@@ -45,7 +45,7 @@ const ProfileScreen = ({ route, navigation }) => {
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Checkout Now',
-                    onPress: () => navigation.navigate('Attendance', { user, action: 'checkout' })
+                    onPress: () => navigation.navigate('Attendance', { user: employee || route.params?.user, action: 'checkout' })
                 }
             ]
         );
