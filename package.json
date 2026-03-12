@@ -20,6 +20,7 @@
     "react-native": "0.84.1",
     "react-native-animated-spinkit": "^1.5.2",
     "react-native-face-detector": "^1.0.15",
+    "react-native-fs": "^2.20.0",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-maps": "^1.27.1",
