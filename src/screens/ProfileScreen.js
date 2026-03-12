@@ -37,19 +37,7 @@ const ProfileScreen = ({ route, navigation }) => {
         Alert.alert(type, `Application for ${type} submitted! Our team will review it.`);
     };
 
-    const handleEndShift = async () => {
-        Alert.alert(
-            'End Shift',
-            'Confirm your checkout to end today\'s shift?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Checkout Now',
-                    onPress: () => navigation.navigate('Attendance', { user: employee || route.params?.user, action: 'checkout' })
-                }
-            ]
-        );
-    };
+
 
     const handleSignOut = async () => {
         Alert.alert(
@@ -143,12 +131,6 @@ const ProfileScreen = ({ route, navigation }) => {
                     )}
                 </View>
 
-                {/* End Shift Button */}
-                <TouchableOpacity style={styles.endShiftBtn} onPress={handleEndShift}>
-                    <Icon name="stop-circle" size={18} color="#f97316" />
-                    <Text style={styles.endShiftText}>End Shift</Text>
-                </TouchableOpacity>
-
                 {/* Sign Out Button */}
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut}>
                     <Icon name="log-out" size={18} color="#ef4444" />
@@ -194,8 +176,6 @@ const styles = StyleSheet.create({
     docRow: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#f8fafc', borderRadius: 12, marginBottom: 10 },
     docName: { flex: 1, marginLeft: 15, color: '#1e293b', fontSize: 14 },
     emptyText: { color: '#94a3b8', fontStyle: 'italic', fontSize: 13 },
-    endShiftBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 15, borderWidth: 1, borderColor: '#fed7aa', backgroundColor: '#fff7ed', borderRadius: 15, marginBottom: 10 },
-    endShiftText: { color: '#f97316', fontWeight: 'bold', fontSize: 15 },
     logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 15, borderWidth: 1, borderColor: '#fecaca', backgroundColor: '#fef2f2', borderRadius: 15 },
     logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 15 }
 });

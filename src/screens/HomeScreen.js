@@ -199,6 +199,20 @@ const HomeScreen = ({ navigation, route }) => {
         return `${h}:${m}:${s}`.split(':').map(v => v.padStart(2, '0')).join(':');
     };
 
+    const handleEndShift = async () => {
+        Alert.alert(
+            'End Shift',
+            'Confirm your checkout to end today\'s shift?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Checkout Now',
+                    onPress: () => navigation.navigate('Attendance', { user, action: 'checkout' })
+                }
+            ]
+        );
+    };
+
     if (isLoading) return <View style={styles.center}><ActivityIndicator color="#FF007F" /></View>;
 
     return (
@@ -311,9 +325,18 @@ const HomeScreen = ({ navigation, route }) => {
                         </LinearGradient>
                     </TouchableOpacity>
                 ) : (
-                    <View style={styles.successBox}>
-                        <Icon name="check-circle" size={20} color="#16a34a" />
-                        <Text style={styles.successText}>Attendance logged successfully</Text>
+                    <View>
+                        <View style={styles.successBox}>
+                            <Icon name="check-circle" size={20} color="#16a34a" />
+                            <Text style={styles.successText}>Attendance logged successfully</Text>
+                        </View>
+                        
+                        <TouchableOpacity style={styles.endShiftBtnHome} onPress={handleEndShift}>
+                            <LinearGradient colors={['#fff', '#f8fafc']} style={styles.endShiftGrad}>
+                                <Icon name="stop-circle" size={20} color="#f97316" />
+                                <Text style={styles.endShiftTextHome}>End Shift Now</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
                     </View>
                 )}
             </View>
@@ -346,7 +369,10 @@ const styles = StyleSheet.create({
     mapContainer: { height: 200, width: '100%', borderRadius: 15, overflow: 'hidden', marginTop: 20 },
     map: { flex: 1 },
     userMarker: { backgroundColor: '#FF8C00', padding: 6, borderRadius: 20, borderWidth: 2, borderColor: '#fff' },
-    accuracyText: { fontSize: 10, color: '#94a3b8', marginTop: 2 }
+    accuracyText: { fontSize: 10, color: '#94a3b8', marginTop: 2 },
+    endShiftBtnHome: { marginTop: 15, borderRadius: 15, overflow: 'hidden', elevation: 2, borderWidth: 1, borderColor: '#fed7aa' },
+    endShiftGrad: { padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+    endShiftTextHome: { color: '#f97316', fontWeight: 'bold', fontSize: 14 }
 });
 
 export default HomeScreen;
