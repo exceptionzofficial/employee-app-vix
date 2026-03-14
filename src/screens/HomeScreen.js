@@ -207,7 +207,30 @@ const HomeScreen = ({ navigation, route }) => {
                 { text: 'Cancel', style: 'cancel' },
                 {
                     text: 'Checkout Now',
-                    onPress: () => navigation.navigate('Attendance', { user, action: 'checkout' })
+                    onPress: async () => {
+                        try {
+                            setIsLoading(true);
+                            const res = await axios.post(`${API_URL}/attendance/mark`, {
+                                employeeId: user.employeeId,
+                                type: 'check-out',
+                                location: currentLocation || { latitude: 0, longitude: 0 },
+                                geofenceName: nearestRule?.eventName || 'Unknown Branch'
+                            });
+
+                            if (res.data) {
+                                await clearShiftState();
+                                setIsShiftStarted(false);
+                                setElapsedTime(0);
+                                if (timerRef.current) clearInterval(timerRef.current);
+                                Alert.alert('Success', 'Shift ended successfully. Have a great day!');
+                            }
+                        } catch (error) {
+                            console.error('Logout error:', error);
+                            Alert.alert('Error', 'Failed to end shift. Please try again.');
+                        } finally {
+                            setIsLoading(false);
+                        }
+                    }
                 }
             ]
         );

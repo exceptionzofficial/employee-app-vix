@@ -121,17 +121,6 @@ const AttendanceScreen = ({ navigation, route }) => {
             setIsVerifying(false);
             setStatusMessage('');
 
-            // Handle checkout
-            if (action === 'checkout') {
-                await clearShiftState();
-                Alert.alert('Success', 'Check-out successful! Your shift has ended.');
-                navigation.navigate('MainTabs', { 
-                    screen: 'Home', 
-                    params: { shiftEnded: true, user: { ...user } } 
-                });
-                return;
-            }
-
             // Handle registration
             if (action === 'register') {
                 const currentSession = await getSession();
@@ -179,7 +168,7 @@ const AttendanceScreen = ({ navigation, route }) => {
                 <View style={styles.header}>
                     <Text style={styles.title}>CRAYONZ SECURE</Text>
                     <Text style={styles.subtitle}>
-                        {action === 'register' ? 'FACE REGISTRATION' : action === 'checkout' ? 'FACE LOGOUT' : 'FACE IDENTIFICATION'}
+                        {action === 'register' ? 'FACE REGISTRATION' : 'FACE IDENTIFICATION'}
                     </Text>
                     {action === 'register' && (
                         <Text style={styles.headerHint}>Powered by Amazon Rekognition</Text>
@@ -221,15 +210,13 @@ const AttendanceScreen = ({ navigation, route }) => {
                             ? statusMessage || 'Processing...' 
                             : action === 'register' 
                                 ? 'Position your face clearly in the frame' 
-                                : action === 'checkout'
-                                    ? 'Confirm your identity to end shift'
-                                    : 'Center your face to sign in'}
+                                : 'Center your face to sign in'}
                     </Text>
                     {!isVerifying && (
                         <TouchableOpacity onPress={handleVerifyOrRegister} activeOpacity={0.8}>
                             <LinearGradient colors={['#FF8C00', '#FF007F']} style={styles.captureBtn}>
                                 <Text style={styles.captureBtnText}>
-                                    {action === 'register' ? 'CAPTURE & REGISTER' : action === 'checkout' ? 'CONFIRM SIGN OUT' : 'CONFIRM FACE ID'}
+                                    {action === 'register' ? 'CAPTURE & REGISTER' : 'CONFIRM FACE ID'}
                                 </Text>
                             </LinearGradient>
                         </TouchableOpacity>

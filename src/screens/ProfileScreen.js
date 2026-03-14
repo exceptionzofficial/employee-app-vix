@@ -33,8 +33,9 @@ const ProfileScreen = ({ route, navigation }) => {
         }
     };
 
-    const handleAction = (type) => {
-        Alert.alert(type, `Application for ${type} submitted! Our team will review it.`);
+    const handleAction = (label) => {
+        const type = label === 'Leave Request' ? 'Leave' : 'Permission';
+        navigation.navigate('RequestLeave', { user: employee || route.params?.user, type });
     };
 
 
@@ -106,6 +107,13 @@ const ProfileScreen = ({ route, navigation }) => {
                         </View>
                         <Text style={styles.actionLabel}>Permission</Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('MyRequests', { user: employee || route.params?.user })}>
+                        <View style={[styles.iconCirc, { backgroundColor: '#f0fdf4' }]}>
+                            <Icon name="file-text" size={20} color="#22c55e" />
+                        </View>
+                        <Text style={styles.actionLabel}>Track Status</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.section}>
@@ -164,9 +172,9 @@ const styles = StyleSheet.create({
     idText: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 5, letterSpacing: 1 },
     content: { padding: 20 },
     actionGrid: { flexDirection: 'row', gap: 15, marginBottom: 30 },
-    actionCard: { flex: 1, backgroundColor: '#f8fafc', padding: 15, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+    actionCard: { flex: 1, backgroundColor: '#f8fafc', paddingVertical: 15, paddingHorizontal: 5, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
     iconCirc: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-    actionLabel: { fontSize: 13, fontWeight: 'bold', color: '#1e293b' },
+    actionLabel: { fontSize: 12, fontWeight: 'bold', color: '#1e293b', textAlign: 'center' },
     section: { marginBottom: 25 },
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginBottom: 15 },
     infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },

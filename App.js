@@ -15,6 +15,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AttendanceLogsScreen from './src/screens/AttendanceLogsScreen';
 import TaskScreen from './src/screens/TaskScreen';
+import RequestLeaveScreen from './src/screens/RequestLeaveScreen';
+import MyRequestsScreen from './src/screens/MyRequestsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -164,6 +166,8 @@ export default function App() {
                         initialParams={sessionUser ? { user: sessionUser } : undefined}
                     />
                     <Stack.Screen name="Attendance" component={AttendanceScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="RequestLeave" component={RequestLeaveScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="MyRequests" component={MyRequestsScreen} options={{ headerShown: false }} />
                 </Stack.Navigator>
             </NavigationContainer>
         </SafeAreaProvider>
