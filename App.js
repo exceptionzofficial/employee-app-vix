@@ -17,6 +17,8 @@ import AttendanceLogsScreen from './src/screens/AttendanceLogsScreen';
 import TaskScreen from './src/screens/TaskScreen';
 import RequestLeaveScreen from './src/screens/RequestLeaveScreen';
 import MyRequestsScreen from './src/screens/MyRequestsScreen';
+import TaskSubmitScreen from './src/screens/TaskSubmitScreen';
+import ExpenseSubmitScreen from './src/screens/ExpenseSubmitScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -168,6 +170,8 @@ export default function App() {
                     <Stack.Screen name="Attendance" component={AttendanceScreen} options={{ headerShown: false }} />
                     <Stack.Screen name="RequestLeave" component={RequestLeaveScreen} options={{ headerShown: false }} />
                     <Stack.Screen name="MyRequests" component={MyRequestsScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="TaskSubmit" component={TaskSubmitScreen} options={{ headerShown: false }} />
+                    <Stack.Screen name="ExpenseSubmit" component={ExpenseSubmitScreen} options={{ headerShown: false }} />
                 </Stack.Navigator>
             </NavigationContainer>
         </SafeAreaProvider>

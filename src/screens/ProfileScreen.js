@@ -114,6 +114,13 @@ const ProfileScreen = ({ route, navigation }) => {
                         </View>
                         <Text style={styles.actionLabel}>Track Status</Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('ExpenseSubmit', { user: employee || route.params?.user })}>
+                        <View style={[styles.iconCirc, { backgroundColor: '#fef2f2' }]}>
+                            <Icon name="credit-card" size={20} color="#ef4444" />
+                        </View>
+                        <Text style={styles.actionLabel}>Expense Claim</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.section}>
@@ -171,10 +178,10 @@ const styles = StyleSheet.create({
     role: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
     idText: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 5, letterSpacing: 1 },
     content: { padding: 20 },
-    actionGrid: { flexDirection: 'row', gap: 15, marginBottom: 30 },
-    actionCard: { flex: 1, backgroundColor: '#f8fafc', paddingVertical: 15, paddingHorizontal: 5, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
-    iconCirc: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-    actionLabel: { fontSize: 12, fontWeight: 'bold', color: '#1e293b', textAlign: 'center' },
+    actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 30 },
+    actionCard: { width: '48%', backgroundColor: '#f8fafc', paddingVertical: 18, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+    iconCirc: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+    actionLabel: { fontSize: 11, fontWeight: 'bold', color: '#1e293b', textAlign: 'center', paddingHorizontal: 5 },
     section: { marginBottom: 25 },
     sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1e293b', marginBottom: 15 },
     infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
