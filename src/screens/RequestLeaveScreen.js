@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
@@ -11,12 +11,56 @@ const RequestLeaveScreen = ({ navigation, route }) => {
     const user = route.params?.user;
     const type = route.params?.type || 'Leave'; // 'Leave' or 'Permission'
     
+    const [myRequests, setMyRequests] = useState([]);
     const [leaveType, setLeaveType] = useState('CL');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-    const [duration, setDuration] = useState(type === 'Permission' ? '2 Hours' : 'Full Day');
+    const [duration, setDuration] = useState('1 Hour');
     const [reason, setReason] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetchingData, setIsFetchingData] = useState(true);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            setIsFetchingData(true);
+            const requestsRes = await axios.get(`${API_URL}/leave/my-requests/${user.employeeId}`);
+            setMyRequests(requestsRes.data);
+            
+            // Set default leave type to first available one
+            const availableTypes = ['CL', 'SL', 'EL-PL', 'LOP', 'Half Day'].filter(t => isTypeAvailable(t, requestsRes.data));
+            if (availableTypes.length > 0 && !availableTypes.includes('CL')) {
+                setLeaveType(availableTypes[0]);
+            }
+        } catch (error) {
+            console.error('Error fetching leave data:', error);
+        } finally {
+            setIsFetchingData(false);
+        }
+    };
+
+    const isTypeAvailable = (t, requests) => {
+        if (!requests) return true;
+
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        // Hide if there's already a request (Pending or Approved) for this type in the current month
+        const hasMonthlyRequest = (requests || []).some(r => {
+            if (r.leaveType !== t || r.type !== 'Leave') return false;
+            if (r.status === 'Rejected') return false;
+
+            const reqDate = new Date(r.startDate);
+            return reqDate.getMonth() === currentMonth && reqDate.getFullYear() === currentYear;
+        });
+
+        if (hasMonthlyRequest) return false;
+
+        return true;
+    };
 
     const handleSubmitting = async () => {
         if (!reason.trim()) {
@@ -32,7 +76,7 @@ const RequestLeaveScreen = ({ navigation, route }) => {
                 type,
                 leaveType: type === 'Leave' ? leaveType : undefined,
                 startDate,
-                endDate: type === 'Leave' ? endDate : startDate,
+                endDate: type === 'Leave' ? (leaveType === 'Half Day' ? startDate : endDate) : startDate,
                 reason,
                 duration
             };
@@ -49,6 +93,15 @@ const RequestLeaveScreen = ({ navigation, route }) => {
             setIsLoading(false);
         }
     };
+
+    if (isFetchingData) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color="#FF007F" />
+                <Text style={{ marginTop: 10, color: '#94a3b8' }}>Loading request data...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -68,15 +121,20 @@ const RequestLeaveScreen = ({ navigation, route }) => {
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>LEAVE TYPE</Text>
                             <View style={styles.typeGrid}>
-                                {['CL', 'SL', 'EL-PL', 'LOP', 'Half Day'].map((t) => (
-                                    <TouchableOpacity 
-                                        key={t}
-                                        style={[styles.typeBtn, leaveType === t && styles.typeBtnActive]}
-                                        onPress={() => setLeaveType(t)}
-                                    >
-                                        <Text style={[styles.typeText, leaveType === t && styles.typeTextActive]}>{t}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                {['CL', 'SL', 'EL-PL', 'LOP', 'Half Day'].map((t) => {
+                                    const available = isTypeAvailable(t, myRequests);
+                                    if (!available) return null;
+
+                                    return (
+                                        <TouchableOpacity 
+                                            key={t}
+                                            style={[styles.typeBtn, leaveType === t && styles.typeBtnActive]}
+                                            onPress={() => setLeaveType(t)}
+                                        >
+                                            <Text style={[styles.typeText, leaveType === t && styles.typeTextActive]}>{t}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </View>
                         </View>
                     )}
@@ -111,15 +169,17 @@ const RequestLeaveScreen = ({ navigation, route }) => {
 
                     {type === 'Permission' && (
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>DURATION / TIME</Text>
-                            <View style={styles.dateInput}>
-                                <Icon name="clock" size={18} color="#FF007F" />
-                                <TextInput 
-                                    value={duration}
-                                    onChangeText={setDuration}
-                                    placeholder="e.g. 2 Hours, 10:00 AM - 12:00 PM"
-                                    style={styles.textInput}
-                                />
+                            <Text style={styles.label}>DURATION</Text>
+                            <View style={styles.typeGrid}>
+                                {['1 Hour', '2 Hours', '3 Hours', '4 Hours'].map((d) => (
+                                    <TouchableOpacity 
+                                        key={d} 
+                                        onPress={() => setDuration(d)}
+                                        style={[styles.typeBtn, duration === d && styles.typeBtnActive]}
+                                    >
+                                        <Text style={[styles.typeText, duration === d && styles.typeTextActive]}>{d}</Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         </View>
                     )}

@@ -10,42 +10,81 @@ const CATEGORIES = [
     "Toll & Parking", "Staff meals", "Hotel stay", 
     "Stationery", "Office materials", "Courier", 
     "Food", "Paid Campaign", "Event Expense", 
-    "Inhouse Shoot", "Camera Rental"
+    "Inhouse Shoot", "Camera Rental", "Custom / Others"
 ];
 
 const ExpenseSubmitScreen = ({ navigation, route }) => {
     const user = route.params?.user;
     const [loading, setLoading] = useState(false);
     
-    // Form State
-    const [form, setForm] = useState({
-        employeeId: user?.employeeId || '',
-        employeeName: user?.name || '',
-        amount: '',
-        expenseDate: new Date().toISOString().split('T')[0],
-        category: 'Petrol',
-        remarks: ''
-    });
+    // Line Item State
+    const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [category, setCategory] = useState('Petrol');
+    const [amount, setAmount] = useState('');
+    const [remarks, setRemarks] = useState('');
+    const [customCategory, setCustomCategory] = useState('');
+    
+    // Collection of items
+    const [items, setItems] = useState([]);
+
+    const addItem = () => {
+        if (!amount || isNaN(amount)) {
+            Alert.alert('Invalid Amount', 'Please enter a valid amount');
+            return;
+        }
+
+        const finalCategory = category === 'Custom / Others' ? customCategory : category;
+        if (!finalCategory) {
+            Alert.alert('Category Required', 'Please specify the custom category name');
+            return;
+        }
+        
+        const newItem = {
+            id: Date.now(),
+            category: finalCategory,
+            amount: parseFloat(amount),
+            remarks: remarks || ''
+        };
+        
+        setItems([...items, newItem]);
+        setAmount('');
+        setRemarks('');
+        setCustomCategory('');
+        setCategory('Petrol'); // Reset to default for next item
+    };
+
+    const removeItem = (id) => {
+        setItems(items.filter(i => i.id !== id));
+    };
 
     const handleSubmit = async () => {
-        if (!form.amount || !form.category) {
-            Alert.alert('Required', 'Please fill in the amount and category');
+        if (items.length === 0) {
+            Alert.alert('Empty Claim', 'Please add at least one expense item.');
             return;
         }
 
         try {
             setLoading(true);
-            await axios.post(`${API_URL}/expenses/submit`, form);
-            Alert.alert('Success', 'Expense claim submitted for approval!', [
+            const payload = {
+                employeeId: user?.employeeId,
+                employeeName: user?.name,
+                expenseDate,
+                items: items // [{ category, amount, remarks }]
+            };
+
+            await axios.post(`${API_URL}/expenses/submit-multiple`, payload);
+            Alert.alert('Success', 'Multiple expense claims submitted successfully!', [
                 { text: 'OK', onPress: () => navigation.goBack() }
             ]);
         } catch (error) {
             console.error('Expense Submission Error:', error);
-            Alert.alert('Error', 'Failed to submit expense. Please try again.');
+            Alert.alert('Error', 'Failed to submit expenses. Please try again.');
         } finally {
             setLoading(false);
         }
     };
+
+    const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
     return (
         <View style={styles.container}>
@@ -55,80 +94,118 @@ const ExpenseSubmitScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
                 <View>
                     <Text style={styles.headerTitle}>Expense Management</Text>
-                    <Text style={styles.headerSubtitle}>Submit your reimbursement claim</Text>
+                    <Text style={styles.headerSubtitle}>Multi-item submission</Text>
                 </View>
             </LinearGradient>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.formCard}>
+                <View style={[styles.formCard, { marginBottom: 15 }]}>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Amount (₹)</Text>
+                        <Text style={styles.label}>Submission Date</Text>
                         <TextInput 
                             style={styles.input}
-                            value={form.amount}
-                            onChangeText={(t) => setForm({...form, amount: t})}
-                            placeholder="0.00"
-                            placeholderTextColor="#94a3b8"
-                            selectionColor="#22c55e"
-                            keyboardType="numeric"
-                        />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Expense Date</Text>
-                        <TextInput 
-                            style={styles.input}
-                            value={form.expenseDate}
-                            onChangeText={(t) => setForm({...form, expenseDate: t})}
+                            value={expenseDate}
+                            onChangeText={setExpenseDate}
                             placeholder="YYYY-MM-DD"
                             placeholderTextColor="#94a3b8"
-                            selectionColor="#22c55e"
                         />
                     </View>
+                </View>
 
+                {/* List of Added Items */}
+                {items.length > 0 && (
+                    <View style={[styles.formCard, { marginBottom: 15, padding: 15 }]}>
+                        <Text style={[styles.label, { marginBottom: 10 }]}>Current Items ({items.length})</Text>
+                        {items.map((item) => (
+                            <View key={item.id} style={styles.itemRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.itemCategory}>{item.category}</Text>
+                                    <Text style={styles.itemRemarks} numberOfLines={1}>{item.remarks || 'No remarks'}</Text>
+                                </View>
+                                <Text style={styles.itemPrice}>₹{item.amount}</Text>
+                                <TouchableOpacity onPress={() => removeItem(item.id)} style={styles.removeBtn}>
+                                    <Icon name="x" size={16} color="#ef4444" />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                        <View style={styles.totalRow}>
+                            <Text style={styles.totalText}>TOTAL AMOUNT</Text>
+                            <Text style={styles.totalValue}>₹{totalAmount.toFixed(2)}</Text>
+                        </View>
+                    </View>
+                )}
+
+                <View style={styles.formCard}>
+                    <Text style={[styles.label, { color: '#FF007F' }]}>ADD NEW EXPENSE ITEM</Text>
+                    
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Category</Text>
                         <View style={styles.pickerContainer}>
                             {CATEGORIES.map((cat) => (
                                 <TouchableOpacity 
                                     key={cat} 
-                                    style={[styles.chip, form.category === cat && styles.activeChip]}
-                                    onPress={() => setForm({...form, category: cat})}
+                                    style={[styles.chip, category === cat && styles.activeChip]}
+                                    onPress={() => setCategory(cat)}
                                 >
-                                    <Text style={[styles.chipText, form.category === cat && styles.activeChipText]}>{cat}</Text>
+                                    <Text style={[styles.chipText, category === cat && styles.activeChipText]}>{cat}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
 
+                    {category === 'Custom / Others' && (
+                        <View style={[styles.inputGroup, { marginTop: -10 }]}>
+                            <Text style={styles.label}>Specify Custom Category</Text>
+                            <TextInput 
+                                style={styles.input}
+                                value={customCategory}
+                                onChangeText={setCustomCategory}
+                                placeholder="Enter category name..."
+                                placeholderTextColor="#94a3b8"
+                            />
+                        </View>
+                    )}
+
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Remarks / Details</Text>
+                        <Text style={styles.label}>Amount (₹)</Text>
                         <TextInput 
-                            style={[styles.input, styles.textArea]}
-                            value={form.remarks}
-                            onChangeText={(t) => setForm({...form, remarks: t})}
-                            placeholder="Add brief details about the expense..."
+                            style={styles.input}
+                            value={amount}
+                            onChangeText={setAmount}
+                            placeholder="0.00"
                             placeholderTextColor="#94a3b8"
-                            selectionColor="#22c55e"
+                            keyboardType="numeric"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Remarks</Text>
+                        <TextInput 
+                            style={[styles.input, { height: 60 }]}
+                            value={remarks}
+                            onChangeText={setRemarks}
+                            placeholder="Details..."
+                            placeholderTextColor="#94a3b8"
                             multiline
-                            numberOfLines={4}
                         />
                     </View>
 
                     <TouchableOpacity 
+                        style={[styles.addItemBtn, { marginBottom: 15 }]} 
+                        onPress={addItem}
+                    >
+                        <Text style={styles.addItemText}>+ ADD TO LIST</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
                         style={styles.submitBtn} 
                         onPress={handleSubmit}
-                        disabled={loading}
+                        disabled={loading || items.length === 0}
                     >
-                        <LinearGradient colors={['#22c55e', '#16a34a']} style={styles.btnGrad}>
-                            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>SUBMIT EXPENSE CLAIM</Text>}
+                        <LinearGradient colors={['#22c55e', '#16a34a']} style={[styles.btnGrad, (loading || items.length === 0) && { opacity: 0.6 }]}>
+                            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>SUBMIT ALL CLAIMS</Text>}
                         </LinearGradient>
                     </TouchableOpacity>
-                </View>
-
-                <View style={styles.infoCard}>
-                    <Icon name="info" size={18} color="#0ea5e9" />
-                    <Text style={styles.infoText}>Claims will follow the multi-level approval process: Verified by Manager → Approved by Admin / Accounts.</Text>
                 </View>
             </ScrollView>
         </View>
@@ -146,17 +223,28 @@ const styles = StyleSheet.create({
     inputGroup: { marginBottom: 20 },
     label: { fontSize: 10, fontWeight: 'bold', color: '#64748b', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' },
     input: { backgroundColor: '#f1f5f9', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, padding: 14, fontSize: 15, color: '#0f172a', fontWeight: '500' },
-    textArea: { height: 100, textAlignVertical: 'top' },
     pickerContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
-    activeChip: { backgroundColor: '#22c55e', borderColor: '#16a34a' },
+    activeChip: { backgroundColor: '#FF007F10', borderColor: '#FF007F' },
     chipText: { fontSize: 12, color: '#64748b', fontWeight: '600' },
-    activeChipText: { color: '#fff' },
+    activeChipText: { color: '#FF007F' },
+    
+    // Item List Styles
+    itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    itemCategory: { fontSize: 14, fontWeight: 'bold', color: '#1e293b' },
+    itemRemarks: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
+    itemPrice: { fontSize: 15, fontWeight: 'bold', color: '#0f172a', marginRight: 15 },
+    removeBtn: { padding: 5 },
+    totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 2, borderTopColor: '#f1f5f9' },
+    totalText: { fontSize: 12, fontWeight: '900', color: '#64748b' },
+    totalValue: { fontSize: 20, fontWeight: 'bold', color: '#FF007F' },
+    
+    addItemBtn: { padding: 15, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#FF007F', alignItems: 'center' },
+    addItemText: { fontSize: 13, fontWeight: 'bold', color: '#FF007F' },
+    
     submitBtn: { marginTop: 10 },
     btnGrad: { padding: 18, borderRadius: 15, alignItems: 'center' },
-    btnText: { color: '#fff', fontWeight: 'bold', letterSpacing: 1 },
-    infoCard: { flexDirection: 'row', backgroundColor: '#e0f2fe', padding: 15, borderRadius: 15, marginTop: 20, alignItems: 'center', gap: 10 },
-    infoText: { flex: 1, color: '#0369a1', fontSize: 12, lineHeight: 18 }
+    btnText: { color: '#fff', fontWeight: 'bold', letterSpacing: 1 }
 });
 
 export default ExpenseSubmitScreen;
