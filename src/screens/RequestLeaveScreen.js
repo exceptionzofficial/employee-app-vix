@@ -19,6 +19,7 @@ const RequestLeaveScreen = ({ navigation, route }) => {
     const [reason, setReason] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isFetchingData, setIsFetchingData] = useState(true);
+    const [leaveBalances, setLeaveBalances] = useState({ CL: 4, SL: 4, 'EL-PL': 4, LOP: 99 });
 
     useEffect(() => {
         fetchData();
@@ -30,8 +31,11 @@ const RequestLeaveScreen = ({ navigation, route }) => {
             const requestsRes = await axios.get(`${API_URL}/leave/my-requests/${user.employeeId}`);
             setMyRequests(requestsRes.data);
             
+            const balancesRes = await axios.get(`${API_URL}/leave/balances/${user.employeeId}`);
+            setLeaveBalances(balancesRes.data);
+            
             // Set default leave type to first available one
-            const availableTypes = ['CL', 'SL', 'EL-PL', 'LOP', 'Half Day'].filter(t => isTypeAvailable(t, requestsRes.data));
+            const availableTypes = ['CL', 'SL', 'EL-PL', 'LOP', 'Half Day'].filter(t => isTypeAvailable(t, requestsRes.data, balancesRes.data));
             if (availableTypes.length > 0 && !availableTypes.includes('CL')) {
                 setLeaveType(availableTypes[0]);
             }
@@ -42,22 +46,14 @@ const RequestLeaveScreen = ({ navigation, route }) => {
         }
     };
 
-    const isTypeAvailable = (t, requests) => {
-        if (!requests) return true;
+    const isTypeAvailable = (t, requests, balances = leaveBalances) => {
+        // LOP and Half Day are always available
+        if (t === 'LOP' || t === 'Half Day') return true;
 
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        
-        // Hide if there's already a request (Pending or Approved) for this type in the current month
-        const hasMonthlyRequest = (requests || []).some(r => {
-            if (r.leaveType !== t || r.type !== 'Leave') return false;
-            if (r.status === 'Rejected') return false;
-
-            const reqDate = new Date(r.startDate);
-            return reqDate.getMonth() === currentMonth && reqDate.getFullYear() === currentYear;
-        });
-
-        if (hasMonthlyRequest) return false;
+        // Check if balance is available
+        if (balances[t] <= 0) {
+            return false;
+        }
 
         return true;
     };
@@ -125,6 +121,10 @@ const RequestLeaveScreen = ({ navigation, route }) => {
                                     const available = isTypeAvailable(t, myRequests);
                                     if (!available) return null;
 
+                                    let balance = leaveBalances[t] !== undefined ? leaveBalances[t] : (t === 'Half Day' ? '' : 0);
+                                    
+                                    const balanceText = (t === 'LOP' || t === 'Half Day') ? '' : `${balance} Days`;
+
                                     return (
                                         <TouchableOpacity 
                                             key={t}
@@ -132,6 +132,9 @@ const RequestLeaveScreen = ({ navigation, route }) => {
                                             onPress={() => setLeaveType(t)}
                                         >
                                             <Text style={[styles.typeText, leaveType === t && styles.typeTextActive]}>{t}</Text>
+                                            {balanceText !== '' && (
+                                                <Text style={[styles.balanceText, leaveType === t && styles.balanceTextActive]}>{balanceText}</Text>
+                                            )}
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -234,7 +237,9 @@ const styles = StyleSheet.create({
     typeBtn: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
     typeBtnActive: { backgroundColor: '#FF007F10', borderColor: '#FF007F' },
     typeText: { fontSize: 12, fontWeight: '700', color: '#64748b' },
-    typeTextActive: { color: '#FF007F' },
+    typeTextActive: { color: '#1e293b' },
+    balanceText: { fontSize: 9, fontWeight: '600', color: '#94a3b8', marginTop: 2 },
+    balanceTextActive: { color: '#64748b' },
     dateInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 12, paddingHorizontal: 15, borderWidth: 1, borderColor: '#e2e8f0' },
     textInput: { flex: 1, paddingVertical: 12, marginLeft: 10, fontSize: 14, color: '#1e293b' },
     textArea: { height: 100, textAlignVertical: 'top', marginLeft: 0, paddingHorizontal: 15, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
