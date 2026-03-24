@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Dimensions, Modal, Pressable } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 import axios from 'axios';
 import API_URL from '../services/api';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+const HOLIDAYS = [
+    { date: '01 Jan', day: 'Thu', name: 'New Year’s Day' },
+    { date: '15 Jan', day: 'Thu', name: 'Pongal' },
+    { date: '21 Mar', day: 'Sat', name: 'Ramzan (Idu’l Fitr)' },
+    { date: '28 May', day: 'Thu', name: 'Bakrid (Id-ul-Zuha)' },
+    { date: '26 Jun', day: 'Fri', name: 'Muharram' },
+    { date: '15 Aug', day: 'Sat', name: 'Independence Day' },
+    { date: '14 Sep', day: 'Mon', name: 'Ganesh Chaturthi' },
+    { date: '02 Oct', day: 'Fri', name: 'Gandhi Jayanti' },
+    { date: '19 Oct', day: 'Mon', name: 'Ayutha Pooja / Saraswathi Pooja' },
+    { date: '20 Oct', day: 'Tue', name: 'Vijayadasami' },
+    { date: '08 Nov', day: 'Sun', name: 'Diwali' },
+    { date: '25 Dec', day: 'Fri', name: 'Christmas' },
+];
 
 const RequestLeaveScreen = ({ navigation, route }) => {
     const user = route.params?.user;
@@ -20,6 +35,9 @@ const RequestLeaveScreen = ({ navigation, route }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isFetchingData, setIsFetchingData] = useState(true);
     const [leaveBalances, setLeaveBalances] = useState({ CL: 4, SL: 4, 'EL-PL': 4, LOP: 99 });
+    const [showCalendar, setShowCalendar] = useState(false);
+    const [viewType, setViewType] = useState('Calendar'); // 'List' or 'Calendar'
+    const [currentCalDate, setCurrentCalDate] = useState(new Date());
 
     useEffect(() => {
         fetchData();
@@ -90,6 +108,41 @@ const RequestLeaveScreen = ({ navigation, route }) => {
         }
     };
 
+    const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+    const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+    const renderCalendarGrid = () => {
+        const year = currentCalDate.getFullYear();
+        const month = currentCalDate.getMonth();
+        const daysInMonth = getDaysInMonth(year, month);
+        const firstDay = getFirstDayOfMonth(year, month);
+        const days = [];
+
+        // Empty slots for previous month
+        for (let i = 0; i < firstDay; i++) {
+            days.push(<View key={`empty-${i}`} style={styles.calendarDayEmpty} />);
+        }
+
+        // Actual days
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${d < 10 ? '0' + d : d} ${currentCalDate.toLocaleString('en-US', { month: 'short' })}`;
+            const isHoliday = HOLIDAYS.some(h => {
+                // Match "DD MMM" e.g. "01 Jan"
+                const [hDay, hMonth] = h.date.split(' ');
+                return parseInt(hDay) === d && hMonth === currentCalDate.toLocaleString('en-US', { month: 'short' });
+            });
+
+            days.push(
+                <View key={d} style={[styles.calendarDay, isHoliday && styles.calendarDayHoliday]}>
+                    <Text style={[styles.calendarDayText, isHoliday && styles.calendarDayHolidayText]}>{d}</Text>
+                    {isHoliday && <View style={styles.holidayDot} />}
+                </View>
+            );
+        }
+
+        return <View style={styles.calendarGrid}>{days}</View>;
+    };
+
     if (isFetchingData) {
         return (
             <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -105,10 +158,14 @@ const RequestLeaveScreen = ({ navigation, route }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <Icon name="arrow-left" size={24} color="#fff" />
                 </TouchableOpacity>
-                <View>
+                <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>{type} Request</Text>
                     <Text style={styles.headerSubtitle}>Submit for Admin Approval</Text>
                 </View>
+                <TouchableOpacity onPress={() => setShowCalendar(true)} style={styles.calendarTrigger}>
+                    <Icon name="calendar" size={16} color="#fff" />
+                    <Text style={styles.calendarTriggerText}>Holidays</Text>
+                </TouchableOpacity>
             </LinearGradient>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -219,6 +276,88 @@ const RequestLeaveScreen = ({ navigation, route }) => {
                     <Text style={styles.infoText}>Requests are typically reviewed by your manager within 24 hours.</Text>
                 </View>
             </ScrollView>
+
+            <Modal
+                visible={showCalendar}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowCalendar(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    {/* Absolutely positioned dismiss layer - sits BEHIND modal content */}
+                    <TouchableOpacity 
+                        style={StyleSheet.absoluteFill} 
+                        activeOpacity={1} 
+                        onPress={() => setShowCalendar(false)} 
+                    />
+                    
+                    {/* Modal content - sits ON TOP, not nested inside any touchable */}
+                    <View style={styles.calendarModal}>
+                        <View style={styles.modalHeader}>
+                            <View>
+                                <Text style={styles.modalTitle}>Leave Calendar {currentCalDate.getFullYear()}</Text>
+                                {viewType === 'Calendar' && (
+                                    <Text style={styles.modalSubtitle}>{currentCalDate.toLocaleString('en-US', { month: 'long' })}</Text>
+                                )}
+                            </View>
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity 
+                                    style={styles.viewToggle} 
+                                    onPress={() => setViewType(viewType === 'Calendar' ? 'List' : 'Calendar')}
+                                >
+                                    <Icon name={viewType === 'Calendar' ? 'list' : 'calendar'} size={14} color="#FF007F" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setShowCalendar(false)} style={styles.closeBtn}>
+                                    <Icon name="x" size={20} color="#94a3b8" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {viewType === 'List' ? (
+                            <ScrollView 
+                                style={styles.holidayList} 
+                                showsVerticalScrollIndicator={false}
+                                nestedScrollEnabled={true}
+                                contentContainerStyle={{ paddingBottom: 20 }}
+                            >
+                                {HOLIDAYS.map((h, i) => (
+                                    <View key={i} style={[styles.holidayItem, i === HOLIDAYS.length - 1 && { borderBottomWidth: 0 }]}>
+                                        <View style={styles.holidayDateBox}>
+                                            <Text style={styles.holidayDate}>{h.date}</Text>
+                                            <Text style={styles.holidayDay}>{h.day}</Text>
+                                        </View>
+                                        <Text style={styles.holidayName}>{h.name}</Text>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <View style={styles.calendarViewContainer}>
+                                <View style={styles.monthNav}>
+                                    <TouchableOpacity onPress={() => setCurrentCalDate(new Date(currentCalDate.setMonth(currentCalDate.getMonth() - 1)))} style={styles.navBtn}>
+                                        <Icon name="chevron-left" size={20} color="#FF007F" />
+                                    </TouchableOpacity>
+                                    <Text style={styles.currentMonthLabel}>{currentCalDate.toLocaleString('en-US', { month: 'long' })}</Text>
+                                    <TouchableOpacity onPress={() => setCurrentCalDate(new Date(currentCalDate.setMonth(currentCalDate.getMonth() + 1)))} style={styles.navBtn}>
+                                        <Icon name="chevron-right" size={20} color="#FF007F" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={styles.weekDays}>
+                                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                                        <Text key={i} style={styles.weekDay}>{d}</Text>
+                                    ))}
+                                </View>
+                                {renderCalendarGrid()}
+                                <View style={styles.calLegend}>
+                                    <View style={styles.legendItem}>
+                                        <View style={[styles.holidayDot, { marginRight: 8 }]} />
+                                        <Text style={styles.legendText}>Public Holiday</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -247,8 +386,40 @@ const styles = StyleSheet.create({
     btnGrad: { padding: 18, alignItems: 'center' },
     submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15, letterSpacing: 1 },
     btnDisabled: { opacity: 0.7 },
-    infoBox: { flexDirection: 'row', itemsCenter: 'center', gap: 10, marginTop: 25, paddingHorizontal: 10 },
-    infoText: { flex: 1, color: '#94a3b8', fontSize: 12, lineHeight: 18 }
+    infoBox: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 25, paddingHorizontal: 10 },
+    infoText: { flex: 1, color: '#94a3b8', fontSize: 12, lineHeight: 18 },
+    calendarTrigger: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+    calendarTriggerText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    calendarModal: { width: '90%', backgroundColor: '#fff', borderRadius: 25, padding: 25, maxHeight: height * 0.8, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 15 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
+    modalSubtitle: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },
+    modalActions: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+    viewToggle: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#FF007F10', justifyContent: 'center', alignItems: 'center' },
+    closeBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' },
+    holidayList: { marginTop: 5, maxHeight: height * 0.5 },
+    holidayItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 15 },
+    holidayDateBox: { width: 55, alignItems: 'center', paddingVertical: 6, borderRadius: 12, backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0' },
+    holidayDate: { fontSize: 13, fontWeight: 'bold', color: '#FF007F' },
+    holidayDay: { fontSize: 9, fontWeight: '600', color: '#94a3b8', marginTop: 1 },
+    holidayName: { flex: 1, fontSize: 13, fontWeight: '600', color: '#475569' },
+    calendarViewContainer: { marginTop: 5 },
+    monthNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, backgroundColor: '#f8fafc', padding: 5, borderRadius: 15 },
+    navBtn: { padding: 8 },
+    currentMonthLabel: { fontSize: 15, fontWeight: 'bold', color: '#1e293b' },
+    weekDays: { flexDirection: 'row', marginBottom: 10 },
+    weekDay: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: '#94a3b8' },
+    calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    calendarDay: { width: `${100/7}%`, height: 45, justifyContent: 'center', alignItems: 'center', marginBottom: 5 },
+    calendarDayEmpty: { width: `${100/7}%`, height: 45 },
+    calendarDayText: { fontSize: 14, color: '#475569', fontWeight: '500' },
+    calendarDayHoliday: { backgroundColor: '#FF007F10', borderRadius: 10 },
+    calendarDayHolidayText: { color: '#FF007F', fontWeight: 'bold' },
+    holidayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#FF007F', marginTop: 2 },
+    calLegend: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+    legendItem: { flexDirection: 'row', alignItems: 'center' },
+    legendText: { fontSize: 11, color: '#94a3b8', fontWeight: '600' }
 });
 
 export default RequestLeaveScreen;

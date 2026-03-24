@@ -266,6 +266,22 @@ const HomeScreen = ({ navigation, route }) => {
                     </View>
                 )}
 
+                <View style={[styles.card, { marginBottom: 20, backgroundColor: '#fff9f2', borderColor: '#fed7aa', borderWidth: 1 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <View style={{ backgroundColor: '#fff', p: 8, borderRadius: 10, padding: 8 }}>
+                            <Icon name="clock" size={18} color="#f97316" />
+                        </View>
+                        <View>
+                            <Text style={[styles.cardTitle, { marginBottom: 0 }]}>OFFICE TIMING</Text>
+                            <Text style={[styles.locName, { fontSize: 16 }]}>9.30 AM – 6.30 PM</Text>
+                        </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, opacity: 0.8 }}>
+                        <Icon name="coffee" size={12} color="#64748b" />
+                        <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '600' }}>LUNCH BREAK: 1.00 PM – 1.40 PM</Text>
+                    </View>
+                </View>
+
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Nearest Branch / Location</Text>
                     {nearestRule ? (

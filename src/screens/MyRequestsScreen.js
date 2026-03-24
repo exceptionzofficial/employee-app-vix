@@ -11,6 +11,7 @@ const MyRequestsScreen = ({ route, navigation }) => {
     const [activeTab, setActiveTab] = useState('Leaves'); // 'Leaves' or 'Expenses'
     const [requests, setRequests] = useState([]);
     const [expenses, setExpenses] = useState([]);
+    const [personal, setPersonal] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     
@@ -27,12 +28,14 @@ const MyRequestsScreen = ({ route, navigation }) => {
                 return;
             }
             setLoading(true);
-            const [leaveRes, expenseRes] = await Promise.all([
+            const [leaveRes, expenseRes, personalRes] = await Promise.all([
                 axios.get(`${API_URL}/leave/my-requests/${user.employeeId}`),
-                axios.get(`${API_URL}/expenses/my/${user.employeeId}`)
+                axios.get(`${API_URL}/expenses/my/${user.employeeId}`),
+                axios.get(`${API_URL}/personal-requests/my/${user.employeeId}`)
             ]);
             setRequests(leaveRes.data || []);
             setExpenses(expenseRes.data || []);
+            setPersonal(personalRes.data || []);
         } catch (error) {
             console.error('Fetch tracking data error:', error);
         } finally {
@@ -64,7 +67,7 @@ const MyRequestsScreen = ({ route, navigation }) => {
         );
     }
 
-    const currentList = activeTab === 'Leaves' ? requests : expenses;
+    const currentList = activeTab === 'Leaves' ? requests : (activeTab === 'Expenses' ? expenses : personal);
 
     return (
         <View style={styles.container}>
@@ -92,6 +95,12 @@ const MyRequestsScreen = ({ route, navigation }) => {
                 >
                     <Text style={[styles.tabText, activeTab === 'Expenses' && styles.activeTabText]}>Expenses</Text>
                 </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[styles.tab, activeTab === 'Personal' && styles.activeTab]} 
+                    onPress={() => setActiveTab('Personal')}
+                >
+                    <Text style={[styles.tabText, activeTab === 'Personal' && styles.activeTabText]}>Personal</Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView 
@@ -114,9 +123,9 @@ const MyRequestsScreen = ({ route, navigation }) => {
                             <View key={index} style={styles.reqCard}>
                                 <View style={styles.cardHeader}>
                                     <View style={styles.typeBadge}>
-                                        <Icon name={isExpense ? 'credit-card' : (item.type === 'Leave' ? 'calendar' : 'clock')} size={14} color="#FF007F" />
+                                        <Icon name={isExpense ? 'credit-card' : (activeTab === 'Personal' ? 'layers' : (item.type === 'Leave' ? 'calendar' : 'clock'))} size={14} color="#FF007F" />
                                         <Text style={styles.typeText}>
-                                            {isExpense ? item.category : (item.type === 'Leave' ? item.leaveType : 'Permission')}
+                                            {isExpense ? item.category : (activeTab === 'Personal' ? item.type : (item.type === 'Leave' ? item.leaveType : 'Permission'))}
                                         </Text>
                                     </View>
                                     <View style={[styles.statusBadge, { backgroundColor: style.bg }]}>
@@ -126,14 +135,14 @@ const MyRequestsScreen = ({ route, navigation }) => {
                                 </View>
 
                                 <View style={styles.cardContent}>
-                                    {isExpense ? (
+                                    {isExpense || activeTab === 'Personal' ? (
                                         <>
                                             <View style={styles.dateRow}>
                                                 <Icon name="calendar" size={14} color="#64748b" />
-                                                <Text style={styles.dateVal}>{item.expenseDate}</Text>
+                                                <Text style={styles.dateVal}>{item.expenseDate || item.date}</Text>
                                             </View>
-                                            <Text style={styles.amountText}>₹{item.amount}</Text>
-                                            {item.remarks ? <Text style={styles.reasonText}>"{item.remarks}"</Text> : null}
+                                            {item.amount > 0 && <Text style={styles.amountText}>₹{item.amount}</Text>}
+                                            {item.remarks || item.reason ? <Text style={styles.reasonText}>"{item.remarks || item.reason}"</Text> : null}
                                         </>
                                     ) : (
                                         <>

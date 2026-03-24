@@ -132,18 +132,33 @@ const ProfileScreen = ({ route, navigation }) => {
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Documents</Text>
-                    {employee.documents && employee.documents.length > 0 ? (
-                        employee.documents.map((doc, idx) => (
-                            <TouchableOpacity key={idx} style={styles.docRow}>
-                                <Icon name="file-text" size={20} color="#FF007F" />
-                                <Text style={styles.docName}>{doc.name || `Document ${idx + 1}`}</Text>
-                                <Icon name="download" size={18} color="#94a3b8" />
-                            </TouchableOpacity>
-                        ))
-                    ) : (
-                        <Text style={styles.emptyText}>No documents uploaded.</Text>
-                    )}
+                    <Text style={styles.sectionTitle}>Personal Request</Text>
+                    <View style={styles.requestGrid}>
+                        <RequestTile 
+                            icon="dollar-sign" 
+                            color="#f59e0b" 
+                            label="Salary In Advance" 
+                            onPress={() => navigation.navigate('PersonalRequest', { type: 'Salary In Advance', user: employee || route.params?.user })} 
+                        />
+                        <RequestTile 
+                            icon="briefcase" 
+                            color="#8b5cf6" 
+                            label="Travel Advance" 
+                            onPress={() => navigation.navigate('PersonalRequest', { type: 'Travel Advance', user: employee || route.params?.user })} 
+                        />
+                        <RequestTile 
+                            icon="layers" 
+                            color="#ec4899" 
+                            label="Handloan" 
+                            onPress={() => navigation.navigate('PersonalRequest', { type: 'Handloan', user: employee || route.params?.user })} 
+                        />
+                        <RequestTile 
+                            icon="home" 
+                            color="#10b981" 
+                            label="WFH" 
+                            onPress={() => navigation.navigate('PersonalRequest', { type: 'WFH', user: employee || route.params?.user })} 
+                        />
+                    </View>
                 </View>
 
                 {/* Sign Out Button */}
@@ -164,6 +179,16 @@ const InfoRow = ({ icon, label, value }) => (
             <Text style={styles.infoValue}>{value}</Text>
         </View>
     </View>
+);
+
+const RequestTile = ({ icon, label, color, onPress }) => (
+    <TouchableOpacity style={styles.requestTile} onPress={onPress}>
+        <View style={[styles.tileIcon, { backgroundColor: `${color}15` }]}>
+            <Icon name={icon} size={18} color={color} />
+        </View>
+        <Text style={styles.tileLabel}>{label}</Text>
+        <Icon name="chevron-right" size={14} color="#cbd5e1" />
+    </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
@@ -188,10 +213,12 @@ const styles = StyleSheet.create({
     infoIcon: { marginRight: 15 },
     infoLabel: { fontSize: 11, color: '#94a3b8' },
     infoValue: { fontSize: 15, color: '#1e293b', fontWeight: '500' },
-    docRow: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#f8fafc', borderRadius: 12, marginBottom: 10 },
-    docName: { flex: 1, marginLeft: 15, color: '#1e293b', fontSize: 14 },
-    emptyText: { color: '#94a3b8', fontStyle: 'italic', fontSize: 13 },
-    logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 15, borderWidth: 1, borderColor: '#fecaca', backgroundColor: '#fef2f2', borderRadius: 15 },
+    infoValue: { fontSize: 15, color: '#1e293b', fontWeight: '500' },
+    requestGrid: { gap: 10 },
+    requestTile: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 15, marginBottom: 8, borderWidth: 1, borderColor: '#f1f5f9' },
+    tileIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    tileLabel: { flex: 1, fontSize: 14, color: '#1e293b', fontWeight: '600' },
+    logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 15, borderWidth: 1, borderColor: '#fecaca', backgroundColor: '#fef2f2', borderRadius: 15, marginTop: 10 },
     logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 15 }
 });
 

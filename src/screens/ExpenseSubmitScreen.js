@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform, Modal } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 import axios from 'axios';
@@ -16,6 +16,7 @@ const CATEGORIES = [
 const ExpenseSubmitScreen = ({ navigation, route }) => {
     const user = route.params?.user;
     const [loading, setLoading] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
     
     // Line Item State
     const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
@@ -62,7 +63,10 @@ const ExpenseSubmitScreen = ({ navigation, route }) => {
             Alert.alert('Empty Claim', 'Please add at least one expense item.');
             return;
         }
+        setShowPreview(true);
+    };
 
+    const confirmSubmit = async () => {
         try {
             setLoading(true);
             const payload = {
@@ -73,6 +77,7 @@ const ExpenseSubmitScreen = ({ navigation, route }) => {
             };
 
             await axios.post(`${API_URL}/expenses/submit-multiple`, payload);
+            setShowPreview(false);
             Alert.alert('Success', 'Multiple expense claims submitted successfully!', [
                 { text: 'OK', onPress: () => navigation.goBack() }
             ]);
@@ -208,6 +213,53 @@ const ExpenseSubmitScreen = ({ navigation, route }) => {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            <Modal visible={showPreview} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Preview Your Claim</Text>
+                            <TouchableOpacity onPress={() => setShowPreview(false)}>
+                                <Icon name="x" size={24} color="#94a3b8" />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.previewInfo}>
+                            <Text style={styles.previewLabel}>Submission Date</Text>
+                            <Text style={styles.previewValue}>{expenseDate}</Text>
+                        </View>
+
+                        <ScrollView style={styles.previewScroll} showsVerticalScrollIndicator={false}>
+                            {items.map((item, index) => (
+                                <View key={index} style={styles.previewRow}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.previewCategory}>{item.category}</Text>
+                                        {item.remarks ? <Text style={styles.previewRemarks}>{item.remarks}</Text> : null}
+                                    </View>
+                                    <Text style={styles.previewPrice}>₹{item.amount}</Text>
+                                </View>
+                            ))}
+                        </ScrollView>
+
+                        <View style={styles.previewFooter}>
+                            <View style={styles.totalBox}>
+                                <Text style={styles.totalText}>TOTAL PAYABLE</Text>
+                                <Text style={styles.totalValue}>₹{totalAmount.toFixed(2)}</Text>
+                            </View>
+
+                            <TouchableOpacity 
+                                style={[styles.submitBtn, { width: '100%' }]} 
+                                onPress={confirmSubmit}
+                                disabled={loading}
+                            >
+                                <LinearGradient colors={['#FF8C00', '#FF007F']} style={styles.btnGrad}>
+                                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>CONFIRM & SUBMIT</Text>}
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -242,9 +294,26 @@ const styles = StyleSheet.create({
     addItemBtn: { padding: 15, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#FF007F', alignItems: 'center' },
     addItemText: { fontSize: 13, fontWeight: 'bold', color: '#FF007F' },
     
+    btnText: { color: '#fff', fontWeight: 'bold', letterSpacing: 1 },
+    
     submitBtn: { marginTop: 10 },
     btnGrad: { padding: 18, borderRadius: 15, alignItems: 'center' },
-    btnText: { color: '#fff', fontWeight: 'bold', letterSpacing: 1 }
+
+    // Modal Styles
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 35, borderTopRightRadius: 35, padding: 25, maxHeight: '80%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
+    previewInfo: { backgroundColor: '#f1f5f9', padding: 15, borderRadius: 15, marginBottom: 20 },
+    previewLabel: { fontSize: 10, fontWeight: 'bold', color: '#64748b', mb: 4, textTransform: 'uppercase' },
+    previewValue: { fontSize: 14, fontWeight: 'bold', color: '#1e293b' },
+    previewScroll: { maxHeight: 300 },
+    previewRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    previewCategory: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
+    previewRemarks: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
+    previewPrice: { fontSize: 15, fontWeight: 'bold', color: '#FF007F' },
+    previewFooter: { marginTop: 25 },
+    totalBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 5 }
 });
 
 export default ExpenseSubmitScreen;
